@@ -460,6 +460,7 @@ MonoBehaviour:
   MaxHealth: 0
   CurrentHealth: 0
   Team: 
+  MovementSync: {fileID: 0}
   Grounded: 0
   JustGrounded: 0
   TargetAngle: 0
@@ -1359,7 +1360,7 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.14279976
+  m_Radius: 0.15
   m_Height: 0.48905686
   m_Direction: 1
   m_Center: {x: 0, y: 0.13, z: -0.02}
@@ -1416,8 +1417,8 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.09044863
-  m_Height: 0.2051867
+  m_Radius: 0.090432
+  m_Height: 0.200646
   m_Direction: 1
   m_Center: {x: 0, y: 0.04, z: 0}
 --- !u!1 &146030
@@ -3726,7 +3727,7 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 1.4055007
-  m_Height: 9.892327
+  m_Height: 10.9
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &146166
@@ -3867,7 +3868,7 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 1.4055007
-  m_Height: 9.892327
+  m_Height: 10.9
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &146172

@@ -193,6 +193,7 @@ MonoBehaviour:
   MaxHealth: 0
   CurrentHealth: 0
   Team: 
+  MovementSync: {fileID: 0}
   Grounded: 0
   JustGrounded: 0
   TargetAngle: 0
@@ -1092,7 +1093,7 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.16924818
+  m_Radius: 0.18
   m_Height: 0.43726423
   m_Direction: 1
   m_Center: {x: 0, y: 0.15, z: 0}
@@ -1105,7 +1106,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 401050}
-  - component: {fileID: 13601012}
+  - component: {fileID: 6780269656044829110}
   m_Layer: 12
   m_Name: neck
   m_TagString: Untagged
@@ -1130,7 +1131,7 @@ Transform:
   - {fileID: 401168}
   m_Father: {fileID: 401048}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!136 &13601012
+--- !u!136 &6780269656044829110
 CapsuleCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1149,8 +1150,8 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.09044863
-  m_Height: 0.20518671
+  m_Radius: 0.090432
+  m_Height: 0.200646
   m_Direction: 1
   m_Center: {x: 0, y: 0.04, z: 0}
 --- !u!1 &101036
@@ -3536,7 +3537,7 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 1.9442375
-  m_Height: 9.892327
+  m_Height: 10.9
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &101172
@@ -3675,7 +3676,7 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 1.9442375
-  m_Height: 9.892327
+  m_Height: 10.9
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &101178
