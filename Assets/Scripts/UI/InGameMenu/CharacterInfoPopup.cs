@@ -47,16 +47,16 @@ namespace UI
                 _healthbar.gameObject.SetActive(toggle);
         }
 
-        public void SetName(string name, bool highlyVisibleEnabled)
+        public void SetName(string name, bool highlyVisibleEnabled, Color backgroundColor)
         {
             if (highlyVisibleEnabled && !_highlyVisible)
             {
-                _nameBackground.color = new Color(0,0,0, 0.5f);
+                _nameBackground.color = backgroundColor;
                 _highlyVisible = true;
             }
             else if (!highlyVisibleEnabled && _highlyVisible)
             {
-                 _nameBackground.color = new Color(0,0,0,0);
+                _nameBackground.color = new Color(0, 0, 0, 0);
                 _highlyVisible = false;
             }
 

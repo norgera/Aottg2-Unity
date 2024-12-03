@@ -18,6 +18,7 @@ using System.Linq;
 using Controllers;
 using Photon.Voice.PUN;
 using Anticheat;
+using System.Text.RegularExpressions;
 
 namespace GameManagers
 {
@@ -877,6 +878,7 @@ namespace GameManagers
             string name = MyPlayerInfo.Profile.Name.Value.HexColor();
             if (SettingsManager.InGameCurrent.Misc.PVP.Value == (int)PVPMode.Team)
             {
+                name = System.Text.RegularExpressions.Regex.Replace(name, "<color=.*?>(.*?)</color>", "$1");
                 if (SettingsManager.InGameCharacterSettings.Team.Value == TeamInfo.Blue)
                     name = ChatManager.GetColorString(name, ChatTextColor.TeamBlue);
                 else if (SettingsManager.InGameCharacterSettings.Team.Value == TeamInfo.Red)

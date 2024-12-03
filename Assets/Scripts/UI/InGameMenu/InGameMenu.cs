@@ -562,7 +562,7 @@ namespace UI
         private string GetPlayerListEntry(Player player)
         {
             string row = string.Empty;
-            // read player props
+            // Read player props
             string status = player.GetStringProperty(PlayerProperty.Status);
             if (status != PlayerStatus.Alive)
                 status = " <color=red>*dead*</color> ";
@@ -613,7 +613,6 @@ namespace UI
 
             team = Util.ColorText(team, teamColor);
 
-
             string loadout = player.GetStringProperty(PlayerProperty.Loadout);
             if (loadout == HumanLoadout.APG)
                 loadout = " APG ";
@@ -624,8 +623,17 @@ namespace UI
             else
                 loadout = string.Empty;
 
+            // Get the player's name
+            string playerName = player.GetStringProperty(PlayerProperty.Name);
 
-            string name = ChatManager.GetIDString(player.ActorNumber, player.IsMasterClient, player.IsLocal) + status + team + loadout + player.GetStringProperty(PlayerProperty.Name);
+            // Check if the name starts with the hex color format
+            if (playerName.StartsWith("[") && playerName.Contains("]"))
+            {
+                // Override the name with the team color
+                playerName = $"<color={teamColor}>{playerName.Substring(playerName.IndexOf(']') + 1).Trim()}</color>";
+            }
+
+            string name = ChatManager.GetIDString(player.ActorNumber, player.IsMasterClient, player.IsLocal) + status + team + loadout + playerName;
 
             string score = string.Empty;
             if (CustomLogicManager.Evaluator != null && CustomLogicManager.Evaluator.ScoreboardProperty != string.Empty)
@@ -648,7 +656,7 @@ namespace UI
                     }
                 }
             }
-            
+
             row = Util.SizeText($"{name}: {score}", 19);
 
             return row;
