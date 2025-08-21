@@ -182,13 +182,14 @@ namespace Characters
                     GetSkinValue(globalSet?.HookR.Value, presetSet?.SkinHookR.Value),
                     GetSkinValue(globalSet?.Hat.Value, presetSet?.SkinHat.Value),
                     GetSkinValue(globalSet?.Head.Value, presetSet?.SkinHead.Value),
-                    GetSkinValue(globalSet?.Back.Value, presetSet?.SkinBack.Value)
+                    GetSkinValue(globalSet?.Back.Value, presetSet?.SkinBack.Value),
+                    GetSkinValue(globalSet?.CustomSpray.Value, presetSet?.SkinCustomSpray.Value)
                 };
                 skinUrlString = string.Join(",", skinUrls);
             }
             catch (System.Exception ex)
             {
-                skinUrls = new string[22] { "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "1", "", "1", "", "", "", "" };
+                skinUrls = new string[23] { "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "1", "", "1", "", "", "", "", "" };
                 skinUrlString = string.Join(",", skinUrls);
             }
             

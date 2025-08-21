@@ -24,5 +24,6 @@
         public StringSetting Hat = new StringSetting(string.Empty, maxLength: 200);
         public StringSetting Head = new StringSetting(string.Empty, maxLength: 200);
         public StringSetting Back = new StringSetting(string.Empty, maxLength: 200);
+        public StringSetting CustomSpray = new StringSetting(string.Empty, maxLength: 200);
     }
 }

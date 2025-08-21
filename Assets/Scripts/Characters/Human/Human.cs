@@ -134,6 +134,7 @@ namespace Characters
         private float _hookHumanConstantTimeLeft;
         private bool _isReelingOut;
         private Dictionary<BaseTitan, float> _lastNapeHitTimes = new Dictionary<BaseTitan, float>();
+        private Dictionary<BaseTitan, float> _lastSlashDecalTimes = new Dictionary<BaseTitan, float>();
         private Material _originalSmokeMaterial;
 
         protected override void CreateDetection()
@@ -971,6 +972,129 @@ namespace Characters
                 MusicManager.PlayDeathSong();
             }
             EffectSpawner.Spawn(EffectPrefabs.Blood2, Cache.Transform.position, Cache.Transform.rotation);
+            // World blood splat on death: find the nearest receiving surface (tree, wall, ground)
+            // Try multiple directions so horizontal collisions (e.g., into trees) place decals on the side surface
+            // Include terrain/ground by OR-ing the character GroundMask with common map object layers
+            var surfaceMask = PhysicsLayer.GetMask(
+                PhysicsLayer.MapObjectAll,
+                PhysicsLayer.MapObjectEntities,
+                PhysicsLayer.MapObjectCharacters,
+                PhysicsLayer.MapObjectTitans,
+                PhysicsLayer.MapObjectMapObjects
+            ) | GroundMask.value;
+            Vector3 origin = Cache.Transform.position;
+            float maxNearbyDist = 8f; // only consider nearby surfaces; if none, spawn nothing
+            Vector3[] tryDirs = new Vector3[]
+            {
+                Vector3.down, // prefer ground if close
+                -Cache.Transform.forward,
+                Cache.Transform.forward,
+                -Cache.Transform.right,
+                Cache.Transform.right,
+                Vector3.up,
+            };
+            RaycastHit? best = null;
+            float bestDist = float.MaxValue;
+            // Prefer a very close side surface (wall/tree) if touching it
+            Vector3[] sideDirs = new Vector3[] { -Cache.Transform.forward, Cache.Transform.forward, -Cache.Transform.right, Cache.Transform.right };
+            foreach (var sd in sideDirs)
+            {
+                var sideHit = RaycastIgnoreTriggers(origin, sd, 2.5f, surfaceMask);
+                if (sideHit.HasValue)
+                {
+                    // Only prefer if surface is not mostly horizontal (i.e., an actual wall)
+                    var nh = sideHit.Value.normal;
+                    if (Mathf.Abs(Vector3.Dot(nh.normalized, Vector3.up)) < 0.6f)
+                    {
+                        best = sideHit;
+                        bestDist = sideHit.Value.distance;
+                        break;
+                    }
+                }
+            }
+            // If no nearby wall, try ground first when close underfoot
+            if (!best.HasValue)
+            {
+                var groundShort = RaycastIgnoreTriggers(origin + Vector3.up * 0.1f, Vector3.down, maxNearbyDist, GroundMask.value);
+                if (groundShort.HasValue)
+                {
+                    best = groundShort;
+                    bestDist = groundShort.Value.distance;
+                }
+            }
+            if (!best.HasValue)
+            foreach (var d in tryDirs)
+            {
+                var hit = RaycastIgnoreTriggers(origin + d * 0.1f, d, maxNearbyDist, surfaceMask);
+                if (hit.HasValue)
+                {
+                    if (hit.Value.distance < bestDist)
+                    {
+                        best = hit;
+                        bestDist = hit.Value.distance;
+                    }
+                }
+            }
+            Characters.BaseTitan titanSurface = null;
+            if (best.HasValue)
+            {
+                var h = best.Value;
+                Vector3 position = h.point + h.normal * 0.02f;
+                Vector3 normal = h.normal;
+                // Check if the surface is a titan; if so, use titan decal rules (projector + stencil + attach)
+                var hitCollider = h.collider;
+                if (hitCollider != null)
+                    titanSurface = hitCollider.GetComponentInParent<Characters.BaseTitan>();
+
+                if (titanSurface != null && titanSurface.Cache != null && titanSurface.Cache.PhotonView != null)
+                {
+                    Transform parentTransform = hitCollider.transform;
+                    if (parentTransform.parent != null && parentTransform.GetComponent<Collider>() == null)
+                        parentTransform = parentTransform.parent;
+                    float size = 2.2f;
+                    float lifetime = 25f;
+                    Decals.DecalSpawner.SpawnNetworkedAttach(Decals.DecalType.Generic, "SteveRandomGarbage/bloodsplat1", position, normal, size, lifetime, false,
+                        titanSurface.Cache.PhotonView, parentTransform);
+                }
+                else
+                {
+                    // Keep texture upright relative to camera up
+                    Vector3 camUp = SceneLoader.CurrentCamera != null ? SceneLoader.CurrentCamera.Cache.Transform.up : Vector3.up;
+                    Vector3 surfaceUp = (camUp - Vector3.Dot(camUp, normal) * normal).normalized;
+                    float size = 2.2f; // smaller, subtle stain
+                    float lifetime = 25f;
+                    Decals.DecalSpawner.SpawnNetworkedOriented(Decals.DecalType.Spray, "SteveRandomGarbage/bloodsplat1", position, normal, surfaceUp, size, lifetime, replaceExisting: false);
+                }
+            }
+            // Optional extra nearby splats: only if a nearby non-titan surface was found (avoid double-projecting on titans)
+            if (best.HasValue && titanSurface == null && SettingsManager.GraphicsSettings.BloodSplatterEnabled.Value)
+            {
+                Vector3 origin2 = Cache.Transform.position + Vector3.up * 0.8f;
+                int mask = PhysicsLayer.GetMask(PhysicsLayer.MapObjectAll, PhysicsLayer.MapObjectEntities) | GroundMask.value;
+                // Rays: down and radial around, slightly downward to hit floors/walls
+                System.Collections.Generic.List<Vector3> directions = new System.Collections.Generic.List<Vector3>();
+                directions.Add(Vector3.down);
+                for (int i = 0; i < 8; i++)
+                {
+                    float ang = i * 45f;
+                    Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
+                    dir = (dir + Vector3.down * 0.35f).normalized;
+                    directions.Add(dir);
+                }
+                foreach (var dir in directions)
+                {
+                    if (Physics.Raycast(origin2, dir, out RaycastHit hit, maxNearbyDist, mask))
+                    {
+                        Vector3 n = hit.normal.normalized;
+                        Vector3 up = Vector3.up;
+                        Vector3 surfaceUp = (up - Vector3.Dot(up, n) * n).normalized;
+                        float size = UnityEngine.Random.Range(2.8f, 4.8f);
+                        float lifetime = 30f;
+                        string tex = "BG:Blood" + UnityEngine.Random.Range(1, 6).ToString() + "BackgroundTexture";
+                        Decals.DecalSpawner.SpawnNetworkedOriented(Decals.DecalType.Spray, tex, hit.point, n, surfaceUp, size, lifetime, false);
+                    }
+                }
+            }
             yield return new WaitForSeconds(2f);
             PhotonNetwork.Destroy(gameObject);
         }
@@ -1239,9 +1363,86 @@ namespace Characters
                     if (titan.BaseTitanCache.Hurtboxes.Contains(collider))
                     {
                         EffectSpawner.Spawn(EffectPrefabs.CriticalHit, hitbox.transform.position, Quaternion.Euler(270f, 0f, 0f));
+                        // Apply blood decal on the exact titan part that was sliced
+                        try
+                        {
+                            // Position: closest point on the titan collider to our blade hitbox
+                            Vector3 hitPosition = collider.ClosestPoint(hitbox.transform.position);
+                            // Approximate outward normal from titan center towards hit point
+                            Vector3 titanCenter = titan.BaseTitanCache.Transform.position;
+                            Vector3 outward = (hitPosition - titanCenter);
+                            Vector3 normal = outward.sqrMagnitude > 0.0001f ? outward.normalized : titan.BaseTitanCache.Transform.forward;
+                            // Size smaller on thin parts, larger on torso
+                            float baseSize = 2f * titan.Size;
+                            float partScale = (collider.name.ToLower().Contains("forearm") || collider.name.ToLower().Contains("hand") || collider.name.ToLower().Contains("wrist")) ? 0.6f :
+                                              (collider.name.ToLower().Contains("upperarm") || collider.name.ToLower().Contains("arm")) ? 0.8f : 1.0f;
+                            float decalSize = Mathf.Clamp(baseSize * partScale, 1.0f, 6f);
+                            float lifetime = 30f;
+                            Debug.Log($"[Decals] Blade hit on titan part '{collider.name}' at {hitPosition} normal {normal} size {decalSize}");
+                            // Choose most stable parent: prefer the actual hurtbox collider transform; fallback to the associated bone if available
+                            Transform parentTransform = collider.transform;
+                            // If collider is a child pushed around by physics, use its parent bone
+                            if (parentTransform.parent != null && parentTransform.GetComponent<Collider>() == null)
+                                parentTransform = parentTransform.parent;
+                            // Prefer stable forearm bones for forearm hurtboxes so blood remains visible after limb disable
+                            if (titan is BasicTitan bt && bt.BasicCache != null)
+                            {
+                                // When arms are disabled, forearm bones get scaled down to ~0, hiding attached decals.
+                                // Prefer the upper arm bone (parent of forearm) so blood remains visible at the stump.
+                                if (bt.BasicCache.ForearmLHurtbox != null && collider == bt.BasicCache.ForearmLHurtbox && bt.BasicCache.ForearmL != null)
+                                {
+                                    var upperArmL = bt.BasicCache.ForearmL.parent != null ? bt.BasicCache.ForearmL.parent : bt.BasicCache.ForearmL;
+                                    parentTransform = upperArmL;
+                                }
+                                else if (bt.BasicCache.ForearmRHurtbox != null && collider == bt.BasicCache.ForearmRHurtbox && bt.BasicCache.ForearmR != null)
+                                {
+                                    var upperArmR = bt.BasicCache.ForearmR.parent != null ? bt.BasicCache.ForearmR.parent : bt.BasicCache.ForearmR;
+                                    parentTransform = upperArmR;
+                                }
+                            }
+                            // Attach to the exact hurtbox/bone so it follows the animation
+                            Decals.DecalSpawner.SpawnNetworkedAttach(Decals.DecalType.Generic, "SteveRandomGarbage/bloodsplat1", hitPosition, normal, decalSize, lifetime, false,
+                                titan.Cache.PhotonView, parentTransform);
+                        }
+                        catch (System.Exception ex)
+                        {
+                            Debug.LogWarning($"[Decals] Failed to spawn titan blood decal: {ex.Message}");
+                        }
                         victimChar.GetHit(this, damage, type, collider.name);
                         if (titan.BaseTitanCache.NapeHurtbox != collider)
                             PlaySound(HumanSounds.LimbHit);
+                    }
+                    else
+                    {
+                        // Not a designated blood hurtbox: place a slash/cut decal and attach so it stays in place
+                        try
+                        {
+                            // Throttle slashes per titan to avoid duplicate spawns from dual blades in a single swing
+                            float now = Time.time;
+                            if (_lastSlashDecalTimes.TryGetValue(titan, out float lastSlash) && (now - lastSlash) < 0.25f)
+                            {
+                                // Skip duplicate
+                            }
+                            else
+                            {
+                                Vector3 hitPosition = collider.ClosestPoint(hitbox.transform.position);
+                                Vector3 titanCenter = titan.BaseTitanCache.Transform.position;
+                                Vector3 outward = (hitPosition - titanCenter);
+                                Vector3 normal = outward.sqrMagnitude > 0.0001f ? outward.normalized : titan.BaseTitanCache.Transform.forward;
+                                float size = Mathf.Clamp(1.5f * titan.Size, 0.8f, 4f);
+                                float lifetime = 20f;
+                                Transform parentTransform = collider.transform;
+                                if (parentTransform.parent != null && parentTransform.GetComponent<Collider>() == null)
+                                    parentTransform = parentTransform.parent;
+                                Decals.DecalSpawner.SpawnNetworkedAttach(Decals.DecalType.Generic, "SteveRandomGarbage/cut1", hitPosition, normal, size, lifetime, false,
+                                    titan.Cache.PhotonView, parentTransform);
+                                _lastSlashDecalTimes[titan] = now;
+                            }
+                        }
+                        catch (System.Exception ex)
+                        {
+                            Debug.LogWarning($"[Decals] Failed to spawn titan slash decal: {ex.Message}");
+                        }
                     }
                 }
                 else
@@ -2877,7 +3078,8 @@ namespace Characters
                             GetSkinValue(globalSet?.HookR.Value, presetSet?.SkinHookR.Value),
                             GetSkinValue(globalSet?.Hat.Value, presetSet?.SkinHat.Value),
                             GetSkinValue(globalSet?.Head.Value, presetSet?.SkinHead.Value),
-                            GetSkinValue(globalSet?.Back.Value, presetSet?.SkinBack.Value)
+                            GetSkinValue(globalSet?.Back.Value, presetSet?.SkinBack.Value),
+                            GetSkinValue(globalSet?.CustomSpray.Value, presetSet?.SkinCustomSpray.Value)
                         };
                         string url = string.Join(",", skinUrls);
                         int viewID = -1;
@@ -2897,7 +3099,7 @@ namespace Characters
                         string url = string.Join(",", new string[] { set.Horse.Value, set.Hair.Value, set.Eye.Value, set.Glass.Value, set.Face.Value,
                 set.Skin.Value, set.Costume.Value, set.Logo.Value, set.GearL.Value, set.GearR.Value, set.Gas.Value, set.Hoodie.Value,
                     set.WeaponTrail.Value, set.ThunderspearL.Value, set.ThunderspearR.Value, set.HookLTiling.Value.ToString(), set.HookL.Value,
-                    set.HookRTiling.Value.ToString(), set.HookR.Value, set.Hat.Value, set.Head.Value, set.Back.Value });
+                    set.HookRTiling.Value.ToString(), set.HookR.Value, set.Hat.Value, set.Head.Value, set.Back.Value, set.CustomSpray.Value });
                         int viewID = -1;
                         if (Horse != null)
                         {

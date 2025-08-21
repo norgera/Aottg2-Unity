@@ -47,6 +47,12 @@ namespace Settings
         public IntSetting WaterFX = new IntSetting((int)WaterFXLevel.High, minValue: 0, maxValue: (int)Util.EnumMaxValue<WaterFXLevel>());
         public BoolSetting HDR = new BoolSetting(false);
 
+        // Decals & Sprays
+        public IntSetting DecalMaxCount = new IntSetting(30, minValue: 0, maxValue: 200);
+        public IntSetting DecalPerPlayerMax = new IntSetting(10, minValue: 0, maxValue: 100);
+        public IntSetting DecalRenderDistance = new IntSetting(100, minValue: 0, maxValue: 1000);
+        public BoolSetting SpraysEnabled = new BoolSetting(true);
+
         public override void Apply()
         {
             if (ShadowQuality.Value == (int)ShadowQualityLevel.Off)

@@ -52,6 +52,7 @@ namespace Settings
         public StringSetting SkinHat = new StringSetting(string.Empty, maxLength: 200);
         public StringSetting SkinHead = new StringSetting(string.Empty, maxLength: 200);
         public StringSetting SkinBack = new StringSetting(string.Empty, maxLength: 200);
+        public StringSetting SkinCustomSpray = new StringSetting(string.Empty, maxLength: 200);
 
         protected override bool Validate()
         {

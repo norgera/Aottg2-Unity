@@ -160,6 +160,23 @@ namespace GameManagers
         }
 
         [PunRPC]
+        public void SpawnDecalRPC(int type, string idOrUrl, Vector3 position, Vector3 normal, float size, float lifetime, int ownerActorNumber, bool replaceExisting, PhotonMessageInfo info)
+        {
+            Decals.DecalSpawner.OnSpawnDecalRPC(type, idOrUrl, position, normal, size, lifetime, ownerActorNumber, replaceExisting, info);
+        }
+
+        [PunRPC]
+        public void SpawnDecalOrientedRPC(int type, string idOrUrl, Vector3 position, Vector3 normal, Vector3 surfaceForward, float size, float lifetime, int ownerActorNumber, bool replaceExisting, PhotonMessageInfo info)
+        {
+            Decals.DecalSpawner.OnSpawnDecalOrientedRPC(type, idOrUrl, position, normal, surfaceForward, size, lifetime, ownerActorNumber, replaceExisting, info);
+        }
+        [PunRPC]
+        public void SpawnDecalAttachRPC(int type, string idOrUrl, Vector3 position, Vector3 normal, float size, float lifetime, int ownerActorNumber, bool replaceExisting, int parentViewId, string parentPath, PhotonMessageInfo info)
+        {
+            Decals.DecalSpawner.OnSpawnDecalAttachRPC(type, idOrUrl, position, normal, size, lifetime, ownerActorNumber, replaceExisting, parentViewId, parentPath, info);
+        }
+
+        [PunRPC]
         public void SpawnSpawnableRPC(string name, Vector3 position, Quaternion rotation, float scale, object[] settings, PhotonMessageInfo info)
         {
             SpawnableSpawner.OnSpawnSpawnableRPC(name, position, rotation, scale, settings, info);

@@ -22,6 +22,7 @@ namespace UI
     {
         public EmoteHandler EmoteHandler;
         public ItemHandler ItemHandler;
+        public SprayHandler SprayHandler;
         public CharacterInfoHandler CharacterInfoHandler;
         public HUDBottomHandler HUDBottomHandler;
         public StylebarHandler StylebarHandler;
@@ -86,6 +87,7 @@ namespace UI
             SetupLabels();
             EmoteHandler = gameObject.AddComponent<EmoteHandler>();
             ItemHandler = gameObject.AddComponent<ItemHandler>();
+            SprayHandler = gameObject.AddComponent<SprayHandler>();
             HUDBottomHandler = gameObject.AddComponent<HUDBottomHandler>();
             CharacterInfoHandler = gameObject.AddComponent<CharacterInfoHandler>();
             StylebarHandler = gameObject.AddComponent<StylebarHandler>();
@@ -255,7 +257,7 @@ namespace UI
                 if (popup.IsActive)
                     return true;
             }
-            return menu.EmoteHandler.IsActive || menu.ItemHandler.IsActive;
+            return menu.EmoteHandler.IsActive || menu.ItemHandler.IsActive || (menu.SprayHandler != null && menu.SprayHandler.IsActive);
         }
 
         public void SetPauseMenu(bool enabled)
@@ -747,6 +749,7 @@ namespace UI
             HideAllPopups();
             EmoteHandler.SetEmoteWheel(false);
             ItemHandler.SetItemWheel(false);
+            SprayHandler.SetSprayWheel(false);
         }
 
         protected override void SetupPopups()

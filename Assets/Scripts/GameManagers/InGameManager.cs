@@ -1004,9 +1004,61 @@ namespace GameManagers
             base.Awake();
         }
 
+        private void CreateDecalSpawner()
+        {
+            // Check if DecalSpawner already exists
+            if (Decals.DecalSpawner.instance != null)
+            {
+                Debug.Log("[InGameManager] DecalSpawner already exists.");
+                return;
+            }
+
+            try
+            {
+                // Create DecalSpawner GameObject
+                GameObject decalSpawnerObj = new GameObject("DecalSpawner");
+                var decalSpawner = decalSpawnerObj.AddComponent<Decals.DecalSpawner>();
+                
+                Debug.Log("[InGameManager] Created DecalSpawner component successfully.");
+                
+                // Add PhotonView for networking - do this after a frame delay
+                StartCoroutine(AddPhotonViewToDecalSpawner(decalSpawnerObj, decalSpawner));
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[InGameManager] Failed to create DecalSpawner: {e.Message}");
+                Debug.LogError($"[InGameManager] Stack trace: {e.StackTrace}");
+            }
+        }
+        
+        private System.Collections.IEnumerator AddPhotonViewToDecalSpawner(GameObject decalSpawnerObj, Decals.DecalSpawner decalSpawner)
+        {
+            yield return null; // Wait one frame
+            
+            try
+            {
+                PhotonView photonView = decalSpawnerObj.AddComponent<PhotonView>();
+                if (photonView.ObservedComponents != null)
+                {
+                    photonView.ObservedComponents.Add(decalSpawner);
+                    photonView.Synchronization = ViewSynchronization.UnreliableOnChange;
+                }
+                Debug.Log("[InGameManager] Added PhotonView to DecalSpawner successfully.");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[InGameManager] Failed to add PhotonView to DecalSpawner: {e.Message}");
+            }
+        }
+
         protected override void Start()
         {
+            Debug.Log("[InGameManager] Start() beginning...");
             _inGameMenu = (InGameMenu)UIManager.CurrentMenu;
+            
+            // Pre-warm decal shaders to prevent first-time lag
+            StartCoroutine(PrewarmDecalShaders());
+            
             if (PhotonNetwork.IsMasterClient)
             {
                 RPCManager.PhotonView.RPC("GameSettingsRPC", RpcTarget.All, new object[] { StringCompression.Compress(SettingsManager.InGameCurrent.SerializeToJsonString()) });
@@ -1026,6 +1078,8 @@ namespace GameManagers
             int currentPing = PhotonNetwork.GetPing();
             PhotonNetwork.LocalPlayer.SetCustomProperty(PlayerProperty.Ping, currentPing);
             PhotonNetwork.LocalPlayer.SetCustomProperty(PlayerProperty.SpectateID, -1);
+            
+            Debug.Log("[InGameManager] Start() completed.");
         }
 
         public override bool IsFinishedLoading()
@@ -1077,6 +1131,10 @@ namespace GameManagers
                 string feed = ChatManager.GetColorString("(" + Util.FormatFloat(time, 2) + ")", ChatTextColor.System) + " Round started.";
                 ChatManager.AddFeed(feed);
             }
+            
+            // Create DecalSpawner after everything is fully loaded
+            Debug.Log("[InGameManager] OnFinishLoading completed, creating DecalSpawner...");
+            CreateDecalSpawner();
         }
 
         private void UpdateInput()
@@ -1235,6 +1293,66 @@ namespace GameManagers
                     return true;
             }
             return false;
+        }
+
+        private IEnumerator PrewarmDecalShaders()
+        {
+            // Wait a few frames for the scene to fully load
+            yield return new WaitForSeconds(0.5f);
+            
+            try
+            {
+                Debug.Log("[InGameManager] Pre-warming decal shaders to prevent first-time lag...");
+                
+                // Initialize DecalSpawner cached materials instead of creating temporary ones
+                Decals.DecalSpawner.InitializeCachedMaterials();
+                
+                // Also warm up the stencil shader separately since DecalSpawner doesn't use it directly
+                var stencilShader = Shader.Find("AOTTG/StencilWrite");
+                if (stencilShader != null)
+                {
+                    var tempObj = new GameObject("TempStencilPrewarmer");
+                    var tempRenderer = tempObj.AddComponent<MeshRenderer>();
+                    var tempFilter = tempObj.AddComponent<MeshFilter>();
+                    
+                    // Create a simple quad mesh for rendering
+                    var quad = new Mesh();
+                    quad.vertices = new Vector3[] {
+                        new Vector3(-0.5f, -0.5f, 0f),
+                        new Vector3( 0.5f, -0.5f, 0f),
+                        new Vector3(-0.5f,  0.5f, 0f),
+                        new Vector3( 0.5f,  0.5f, 0f)
+                    };
+                    quad.triangles = new int[] { 0, 2, 1, 2, 3, 1 };
+                    quad.uv = new Vector2[] {
+                        new Vector2(0f, 0f),
+                        new Vector2(1f, 0f),
+                        new Vector2(0f, 1f),
+                        new Vector2(1f, 1f)
+                    };
+                    quad.RecalculateNormals();
+                    tempFilter.mesh = quad;
+                    
+                    // Position the temp object far away and make it tiny
+                    tempObj.transform.position = new Vector3(0f, -1000f, 0f);
+                    tempObj.transform.localScale = Vector3.one * 0.001f;
+                    
+                    var tempMat = new Material(stencilShader);
+                    tempRenderer.material = tempMat;
+                    Debug.Log("[InGameManager] Pre-warmed stencil shader");
+                    GameObject.Destroy(tempMat);
+                    GameObject.Destroy(tempObj);
+                }
+                
+                Debug.Log("[InGameManager] Decal shader pre-warming complete");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[InGameManager] Error during shader pre-warming: {ex.Message}");
+            }
+            
+            // Wait one frame after shader setup to ensure rendering
+            yield return new WaitForEndOfFrame();
         }
     }
 

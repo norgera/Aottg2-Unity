@@ -83,6 +83,7 @@ namespace Characters
         protected float _climbCooldownLeft;
         protected Vector3 _startPosition;
         protected LayerMask MapObjectMask => PhysicsLayer.GetMask(PhysicsLayer.MapObjectEntities);
+        private static readonly int StencilWriteShaderId = 0; // placeholder for reference if we need
 
         // attacks
         public float _stateTimeLeft;
@@ -102,6 +103,8 @@ namespace Characters
         public virtual void Init(bool ai, string team, JSONNode data)
         {
             base.Init(ai, team);
+            // Ensure titan renderers write to stencil so decals only render on titans
+            TryEnableTitanStencil();
             if (data != null)
             {
                 if (data.HasKey("RunSpeedBase"))
@@ -140,6 +143,97 @@ namespace Characters
                         Animation.SetSpeed(BaseTitanAnimations.Turn90R, Animation.GetSpeed(BaseTitanAnimations.Turn90R) * TurnSpeed);
                 }
             }
+        }
+
+        private void TryEnableTitanStencil()
+        {
+            // Add a child renderer that writes stencil, but does not render color. We do this by duplicating
+            // each SkinnedMeshRenderer/MeshRenderer with the StencilWrite shader. If not available, no-op.
+            var stencilShader = Shader.Find("AOTTG/StencilWrite");
+            if (stencilShader == null)
+                return;
+
+            foreach (var smr in GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                if (smr.sharedMesh == null)
+                    continue;
+                // Avoid duplicate proxies
+                if (smr.transform.Find("StencilProxy") != null)
+                    continue;
+                // Skip eyes/eyelashes or any explicit eye meshes
+                if (IsEyeRenderer(smr.gameObject.name, smr.sharedMaterials))
+                    continue;
+                AttachStencilProxyRendererSkinned(smr, stencilShader);
+            }
+            foreach (var mr in GetComponentsInChildren<MeshRenderer>())
+            {
+                var mf = mr.GetComponent<MeshFilter>();
+                if (mf != null && mf.sharedMesh != null)
+                {
+                    if (mr.transform.Find("StencilProxy") != null)
+                        continue;
+                    if (IsEyeRenderer(mr.gameObject.name, mr.sharedMaterials))
+                        continue;
+                    AttachStencilProxyRendererStatic(mr.gameObject, mf.sharedMesh, stencilShader);
+                }
+            }
+        }
+
+        private void AttachStencilProxyRendererStatic(GameObject source, Mesh mesh, Shader stencilShader)
+        {
+            var proxy = new GameObject("StencilProxy");
+            proxy.transform.SetParent(source.transform, false);
+            proxy.transform.localPosition = Vector3.zero;
+            proxy.transform.localRotation = Quaternion.identity;
+            proxy.transform.localScale = Vector3.one;
+            var mf = proxy.AddComponent<MeshFilter>();
+            mf.sharedMesh = mesh;
+            var mr = proxy.AddComponent<MeshRenderer>();
+            var mat = new Material(stencilShader);
+            mr.sharedMaterial = mat;
+            // Lower render queue to write before decals; tag as editor-only if needed
+        }
+
+        private void AttachStencilProxyRendererSkinned(SkinnedMeshRenderer source, Shader stencilShader)
+        {
+            var proxy = new GameObject("StencilProxy");
+            proxy.transform.SetParent(source.transform, false);
+            proxy.transform.localPosition = Vector3.zero;
+            proxy.transform.localRotation = Quaternion.identity;
+            proxy.transform.localScale = Vector3.one;
+            var smr = proxy.AddComponent<SkinnedMeshRenderer>();
+            smr.sharedMesh = source.sharedMesh;
+            smr.rootBone = source.rootBone;
+            smr.bones = source.bones;
+            smr.updateWhenOffscreen = source.updateWhenOffscreen;
+            smr.localBounds = source.localBounds;
+            var mat = new Material(stencilShader);
+            smr.sharedMaterial = mat;
+            // Do not cast/receive shadows to minimize cost
+            smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            smr.receiveShadows = false;
+        }
+
+        private bool IsEyeRenderer(string objectName, Material[] materials)
+        {
+            if (!string.IsNullOrEmpty(objectName))
+            {
+                var lower = objectName.ToLower();
+                if (lower.Contains("eye"))
+                    return true;
+            }
+            if (materials != null)
+            {
+                foreach (var m in materials)
+                {
+                    if (m == null) continue;
+                    string mn = m.name != null ? m.name.ToLower() : string.Empty;
+                    string sn = m.shader != null ? m.shader.name.ToLower() : string.Empty;
+                    if (mn.Contains("eye") || sn.Contains("eye"))
+                        return true;
+                }
+            }
+            return false;
         }
 
         protected override void CreateDetection()
@@ -289,6 +383,7 @@ namespace Characters
             StateAction(TitanState.Land, BaseTitanAnimations.Land);
             EffectSpawner.Spawn(EffectPrefabs.Boom2, Cache.Transform.position + Vector3.down * _currentGroundDistance,
                 Quaternion.Euler(270f, 0f, 0f), Size * SizeMultiplier);
+            // Removed: do not place ground blood decals on landing; blood should apply only to titans when hit
         }
 
         public virtual void Fall()

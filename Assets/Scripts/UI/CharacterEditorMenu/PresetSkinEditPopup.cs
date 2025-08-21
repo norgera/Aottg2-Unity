@@ -56,6 +56,7 @@ namespace UI
             ElementFactory.CreateInputSetting(DoublePanelRight, style, _currentPreset.SkinHat, UIManager.GetLocale("SettingsPopup", "Skins.Human", "Hat"), elementWidth: 300f);
             ElementFactory.CreateInputSetting(DoublePanelRight, style, _currentPreset.SkinHead, UIManager.GetLocale("SettingsPopup", "Skins.Human", "Head"), elementWidth: 300f);
             ElementFactory.CreateInputSetting(DoublePanelRight, style, _currentPreset.SkinBack, UIManager.GetLocale("SettingsPopup", "Skins.Human", "Back"), elementWidth: 300f);
+            ElementFactory.CreateInputSetting(DoublePanelRight, style, _currentPreset.SkinCustomSpray, UIManager.GetLocale("SettingsPopup", "Skins.Human", "CustomSpray"), elementWidth: 300f);
             ElementFactory.CreateTextButton(BottomBar, buttonStyle, UIManager.GetLocaleCommon("Clear"), onClick: () => OnButtonClick("Clear"));
             ElementFactory.CreateTextButton(BottomBar, buttonStyle, UIManager.GetLocaleCommon("Apply"), onClick: () => OnButtonClick("Save"));
             ElementFactory.CreateTextButton(BottomBar, buttonStyle, UIManager.GetLocaleCommon("Cancel"), onClick: () => OnButtonClick("Cancel"));

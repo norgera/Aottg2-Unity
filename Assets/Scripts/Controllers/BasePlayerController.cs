@@ -105,6 +105,7 @@ namespace Controllers
             {
                 _inGameMenu.EmoteHandler.SetEmoteWheel(false);
                 _inGameMenu.ItemHandler.SetItemWheel(false);
+                _inGameMenu.SprayHandler.SetSprayWheel(false);
                 return;
             }
             if (_interactionInput.EmoteMenu.GetKeyDown())
@@ -112,7 +113,14 @@ namespace Controllers
             if (_interactionInput.ItemMenu.GetKeyDown())
                 _inGameMenu.ItemHandler.ToggleItemWheel();
             if (_interactionInput.MenuNext.GetKeyDown())
+            {
                 _inGameMenu.EmoteHandler.NextEmoteWheel();
+                if (_inGameMenu.SprayHandler != null && _inGameMenu.SprayHandler.IsActive)
+                    _inGameMenu.SprayHandler.NextSprayWheel();
+            }
+            // Temporary: map Interact (G) to open spray wheel until dedicated binding is added
+            if (_interactionInput.Interact.GetKeyDown())
+                _inGameMenu.SprayHandler.ToggleSprayWheel();
         }
 
         protected virtual void UpdateUI(bool inMenu)
